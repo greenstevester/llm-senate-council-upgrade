@@ -151,74 +151,75 @@ func ParseBillsHTML(doc *goquery.Document) ([]Bill, error) {
 			return // Skip if no title
 		}
 
+		// Store the bill URL from the title link
+		billTitleURL := normalizeURL(href)
+
 		// Navigate to parent container to find other bill details
-		container := s.Parent()
+		// The <h4> is inside <div class="row">, which is inside <li>
+		// We need the <li> to find the sibling <div> containing <dl>
+		container := s.Parent().Parent()
 
 		// Extract bill details from the container
 		var dateIntroduced, chamber, status, portfolioSponsor, summary string
 		var billURL, memoURL string
 
-		// Look for bill metadata in paragraphs after the h4
-		container.Find("p").Each(func(j int, p *goquery.Selection) {
-			text := strings.TrimSpace(p.Text())
+		// Look for bill metadata in definition lists (dl/dt/dd structure)
+		// Format: <dl><dt>Label</dt><dd>Value</dd>...</dl>
+		container.Find("dl").Each(func(j int, dl *goquery.Selection) {
+			var currentLabel string
 
-			// Check if this paragraph contains date/chamber/status info
-			if strings.Contains(text, "Introduced:") || strings.Contains(text, "Senate") || strings.Contains(text, "House of Representatives") {
-				parts := strings.Split(text, "|")
-				for _, part := range parts {
-					part = strings.TrimSpace(part)
+			// Iterate through all children of the <dl> tag
+			dl.Children().Each(func(k int, child *goquery.Selection) {
+				tagName := goquery.NodeName(child)
 
-					// Extract date (format: "03 Sep 2025")
-					if matched, _ := regexp.MatchString(`\d{2}\s+\w{3}\s+\d{4}`, part); matched {
-						dateIntroduced = part
+				if tagName == "dt" {
+					// This is a definition term (label)
+					currentLabel = strings.ToLower(strings.TrimSpace(child.Text()))
+				} else if tagName == "dd" && currentLabel != "" {
+					// This is a definition (value) - clean up whitespace and &nbsp;
+					value := strings.TrimSpace(child.Text())
+					value = strings.TrimSpace(strings.ReplaceAll(value, "\u00a0", "")) // Remove &nbsp;
+
+					// Map label to appropriate field
+					switch currentLabel {
+					case "date":
+						dateIntroduced = value
+					case "chamber":
+						chamber = value
+					case "status":
+						status = value
+					case "portfolio", "sponsor":
+						portfolioSponsor = value
+					case "summary":
+						summary = value
 					}
 
-					// Extract chamber
-					if strings.Contains(part, "Senate") {
-						chamber = "Senate"
-					} else if strings.Contains(part, "House of Representatives") {
-						chamber = "House of Representatives"
-					}
-
-					// Extract status (typically "Before Senate" or "Before House")
-					if strings.HasPrefix(part, "Before ") {
-						status = part
-					}
+					// Reset label after processing
+					currentLabel = ""
 				}
-			}
-
-			// Check for portfolio/sponsor
-			if strings.Contains(text, "Portfolio:") || strings.Contains(text, "Sponsor:") {
-				// Extract the text after the colon
-				if idx := strings.Index(text, ":"); idx != -1 {
-					portfolioSponsor = strings.TrimSpace(text[idx+1:])
-				}
-			}
-
-			// Extract summary (usually a longer paragraph without metadata keywords)
-			if !strings.Contains(text, "Introduced:") &&
-			   !strings.Contains(text, "Portfolio:") &&
-			   !strings.Contains(text, "Sponsor:") &&
-			   !strings.Contains(text, "|") &&
-			   len(text) > 50 {
-				if summary == "" || len(text) > len(summary) {
-					summary = text
-				}
-			}
+			})
 		})
 
 		// Extract links (Bill and Explanatory Memorandum)
-		container.Find("a").Each(func(j int, a *goquery.Selection) {
+		// Look for links that specifically say "Bill" or "Explanatory Memorandum"
+		container.Find("p a").Each(func(j int, a *goquery.Selection) {
 			linkText := strings.TrimSpace(a.Text())
 			linkHref, _ := a.Attr("href")
 
-			if strings.Contains(linkText, "Bill") && !strings.Contains(linkText, "Explanatory") {
+			// Match "Bill" link (but not "Explanatory Memorandum")
+			if linkText == "Bill" {
 				billURL = normalizeURL(linkHref)
 			}
+			// Match "Explanatory Memorandum" link
 			if strings.Contains(linkText, "Explanatory Memorandum") {
 				memoURL = normalizeURL(linkHref)
 			}
 		})
+
+		// If we didn't find a specific "Bill" link, use the title URL
+		if billURL == "" {
+			billURL = billTitleURL
+		}
 
 		// Create bill object
 		bill := Bill{
@@ -241,24 +242,24 @@ func ParseBillsHTML(doc *goquery.Document) ([]Bill, error) {
 }
 
 // extractBillID extracts the bill ID from a URL
-// Expected format: /Parliamentary_Business/Bills_Legislation/bd/bd1234
+// Expected format: /Parliamentary_Business/Bills_Legislation/Bills_Search_Results/Result?bId=r7365
 func extractBillID(href string) string {
-	// Look for patterns like "bd/bd1234" or just the ID part
-	re := regexp.MustCompile(`bd/bd(\w+)`)
+	// Look for bId parameter in query string (e.g., "Result?bId=r7365")
+	re := regexp.MustCompile(`bId=([a-zA-Z0-9]+)`)
 	matches := re.FindStringSubmatch(href)
 	if len(matches) > 1 {
 		return matches[1]
 	}
 
-	// Alternative: extract from last segment
-	parts := strings.Split(href, "/")
-	if len(parts) > 0 {
-		lastPart := parts[len(parts)-1]
-		// Remove "bd" prefix if present
-		return strings.TrimPrefix(lastPart, "bd")
+	// Fallback: Look for patterns like "bd/bd1234"
+	re = regexp.MustCompile(`bd/bd(\w+)`)
+	matches = re.FindStringSubmatch(href)
+	if len(matches) > 1 {
+		return matches[1]
 	}
 
-	return ""
+	// Last resort: use the entire URL as ID
+	return href
 }
 
 // normalizeURL ensures URLs are absolute
