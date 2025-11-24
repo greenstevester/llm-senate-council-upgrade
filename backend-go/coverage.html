@@ -1,0 +1,1210 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>llm-council: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">llm-council/config.go (68.2%)</option>
+				
+				<option value="file1">llm-council/council.go (95.0%)</option>
+				
+				<option value="file2">llm-council/main.go (72.8%)</option>
+				
+				<option value="file3">llm-council/openrouter.go (91.5%)</option>
+				
+				<option value="file4">llm-council/storage.go (88.2%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "log"
+        "os"
+        "path/filepath"
+        "time"
+
+        "github.com/joho/godotenv"
+)
+
+// Configuration constants
+var (
+        // OpenRouterAPIKey is the API key for OpenRouter
+        OpenRouterAPIKey string
+
+        // CouncilModels is the list of models to query in parallel
+        CouncilModels = []string{
+                "openai/gpt-5.1",
+                "google/gemini-3-pro-preview",
+                "anthropic/claude-sonnet-4.5",
+                "x-ai/grok-4",
+        }
+
+        // ChairmanModel is the model used for final synthesis
+        ChairmanModel = "google/gemini-3-pro-preview"
+
+        // OpenRouterAPIURL is the endpoint for OpenRouter API
+        OpenRouterAPIURL = "https://openrouter.ai/api/v1/chat/completions"
+
+        // DataDir is the directory for conversation storage
+        DataDir = "data/conversations"
+
+        // Timeout constants
+        ModelQueryTimeout = 120 * time.Second
+        TitleGenTimeout   = 30 * time.Second
+
+        // CORS allowed origins (configurable via environment)
+        CORSAllowedOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
+
+        // MaxRequestBodySize is the maximum allowed request body size (1MB)
+        MaxRequestBodySize int64 = 1 &lt;&lt; 20
+)
+
+// LoadConfig loads configuration from environment variables
+func LoadConfig() <span class="cov8" title="1">{
+        // Load .env file - try multiple locations
+        envLocations := []string{
+                ".env",        // Current directory
+                "../.env",     // Parent directory
+        }
+
+        // Try to find and load .env file
+        envLoaded := false
+        for _, envPath := range envLocations </span><span class="cov8" title="1">{
+                absPath, err := filepath.Abs(envPath)
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if _, err := os.Stat(absPath); err == nil </span><span class="cov8" title="1">{
+                        if err := godotenv.Load(absPath); err == nil </span><span class="cov8" title="1">{
+                                log.Printf("Loaded .env from: %s", absPath)
+                                envLoaded = true
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">if !envLoaded </span><span class="cov0" title="0">{
+                log.Printf("Warning: .env file not found in any expected location")
+        }</span>
+
+        // Get OpenRouter API key
+        <span class="cov8" title="1">OpenRouterAPIKey = os.Getenv("OPENROUTER_API_KEY")
+        if OpenRouterAPIKey == "" </span><span class="cov0" title="0">{
+                log.Fatal("OPENROUTER_API_KEY environment variable is required")
+        }</span>
+
+        // Load CORS origins from environment if provided
+        <span class="cov8" title="1">if corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); corsOrigins != "" </span><span class="cov0" title="0">{
+                CORSAllowedOrigins = []string{}
+                for _, origin := range filepath.SplitList(corsOrigins) </span><span class="cov0" title="0">{
+                        if origin != "" </span><span class="cov0" title="0">{
+                                CORSAllowedOrigins = append(CORSAllowedOrigins, origin)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">log.Println("Configuration loaded successfully")</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "context"
+        "fmt"
+        "regexp"
+        "sort"
+        "strings"
+)
+
+// Stage1CollectResponses collects individual responses from all council models.
+// This is the first stage of the council process where each model independently
+// answers the user's question. Returns a slice of responses, one per successful model.
+func Stage1CollectResponses(ctx context.Context, userQuery string) ([]Stage1Response, error) <span class="cov8" title="1">{
+        // Create messages slice with user query
+        messages := []OpenRouterMessage{
+                {Role: "user", Content: userQuery},
+        }
+
+        // Query all models in parallel
+        responses, err := QueryModelsParallel(ctx, CouncilModels, messages)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to query models: %w", err)
+        }</span>
+
+        // Format results - only include successful responses
+        <span class="cov8" title="1">var stage1Results []Stage1Response
+        for model, response := range responses </span><span class="cov8" title="1">{
+                if response != nil </span><span class="cov8" title="1">{
+                        stage1Results = append(stage1Results, Stage1Response{
+                                Model:    model,
+                                Response: response.Content,
+                        })
+                }</span>
+        }
+
+        <span class="cov8" title="1">return stage1Results, nil</span>
+}
+
+// Stage2CollectRankings collects rankings from each model on anonymized responses.
+// This is the second stage where models evaluate each other's responses without
+// knowing which model produced which response. Returns rankings, a label-to-model
+// mapping for de-anonymization, and any error encountered.
+func Stage2CollectRankings(ctx context.Context, userQuery string, stage1Results []Stage1Response) ([]Stage2Ranking, map[string]string, error) <span class="cov8" title="1">{
+        // Create anonymized labels (A, B, C...)
+        labelToModel := make(map[string]string)
+        var responsesText strings.Builder
+
+        for i, result := range stage1Results </span><span class="cov8" title="1">{
+                label := string(rune('A' + i))
+                labelKey := fmt.Sprintf("Response %s", label)
+                labelToModel[labelKey] = result.Model
+
+                responsesText.WriteString(fmt.Sprintf("Response %s:\n%s\n\n", label, result.Response))
+        }</span>
+
+        // Build ranking prompt
+        <span class="cov8" title="1">rankingPrompt := fmt.Sprintf(`You are evaluating different responses to the following question:
+
+Question: %s
+
+Here are the responses from different models (anonymized):
+
+%s
+
+Your task:
+1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
+2. Then, at the very end of your response, provide a final ranking.
+
+IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
+- Start with the line "FINAL RANKING:" (all caps, with colon)
+- Then list the responses from best to worst as a numbered list
+- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
+- Do not add any other text or explanations in the ranking section
+
+Example of the correct format for your ENTIRE response:
+
+Response A provides good detail on X but misses Y...
+Response B is accurate but lacks depth on Z...
+Response C offers the most comprehensive answer...
+
+FINAL RANKING:
+1. Response C
+2. Response A
+3. Response B
+
+Now provide your evaluation and ranking:`, userQuery, responsesText.String())
+
+        // Create messages
+        messages := []OpenRouterMessage{
+                {Role: "user", Content: rankingPrompt},
+        }
+
+        // Query all models in parallel
+        responses, err := QueryModelsParallel(ctx, CouncilModels, messages)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, fmt.Errorf("failed to query models for rankings: %w", err)
+        }</span>
+
+        // Format results
+        <span class="cov8" title="1">var stage2Results []Stage2Ranking
+        for model, response := range responses </span><span class="cov8" title="1">{
+                if response != nil </span><span class="cov8" title="1">{
+                        fullText := response.Content
+                        parsed := ParseRankingFromText(fullText)
+                        stage2Results = append(stage2Results, Stage2Ranking{
+                                Model:         model,
+                                Ranking:       fullText,
+                                ParsedRanking: parsed,
+                        })
+                }</span>
+        }
+
+        <span class="cov8" title="1">return stage2Results, labelToModel, nil</span>
+}
+
+// Stage3SynthesizeFinal synthesizes the final response using the chairman model.
+// This is the final stage where the chairman reviews all responses and rankings
+// to produce a comprehensive answer. Returns the synthesized response or an error.
+func Stage3SynthesizeFinal(ctx context.Context, userQuery string, stage1Results []Stage1Response, stage2Results []Stage2Ranking) (*Stage3Response, error) <span class="cov8" title="1">{
+        // Build comprehensive context with all stage1 results
+        var stage1Text strings.Builder
+        for _, result := range stage1Results </span><span class="cov8" title="1">{
+                stage1Text.WriteString(fmt.Sprintf("Model: %s\nResponse: %s\n\n", result.Model, result.Response))
+        }</span>
+
+        // Build stage2 rankings text
+        <span class="cov8" title="1">var stage2Text strings.Builder
+        for _, result := range stage2Results </span><span class="cov8" title="1">{
+                stage2Text.WriteString(fmt.Sprintf("Model: %s\nRanking: %s\n\n", result.Model, result.Ranking))
+        }</span>
+
+        // Create chairman prompt
+        <span class="cov8" title="1">chairmanPrompt := fmt.Sprintf(`You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
+
+Original Question: %s
+
+STAGE 1 - Individual Responses:
+%s
+
+STAGE 2 - Peer Rankings:
+%s
+
+Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
+- The individual responses and their insights
+- The peer rankings and what they reveal about response quality
+- Any patterns of agreement or disagreement
+
+Provide a clear, well-reasoned final answer that represents the council's collective wisdom:`, userQuery, stage1Text.String(), stage2Text.String())
+
+        // Create messages
+        messages := []OpenRouterMessage{
+                {Role: "user", Content: chairmanPrompt},
+        }
+
+        // Query chairman model
+        response, err := QueryModel(ctx, ChairmanModel, messages, ModelQueryTimeout)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("chairman model query failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;Stage3Response{
+                Model:    ChairmanModel,
+                Response: response.Content,
+        }, nil</span>
+}
+
+// ParseRankingFromText extracts the ranking from a model's response text.
+// Looks for a "FINAL RANKING:" section and parses numbered responses (e.g., "1. Response A").
+// Falls back to extracting any "Response X" patterns found in the text.
+func ParseRankingFromText(rankingText string) []string <span class="cov8" title="1">{
+        // Look for "FINAL RANKING:" section
+        if strings.Contains(rankingText, "FINAL RANKING:") </span><span class="cov8" title="1">{
+                parts := strings.Split(rankingText, "FINAL RANKING:")
+                if len(parts) &gt;= 2 </span><span class="cov8" title="1">{
+                        rankingSection := parts[1]
+
+                        // Try to extract numbered list format (e.g., "1. Response A")
+                        numberedPattern := regexp.MustCompile(`\d+\.\s*Response [A-Z]`)
+                        numberedMatches := numberedPattern.FindAllString(rankingSection, -1)
+                        if len(numberedMatches) &gt; 0 </span><span class="cov8" title="1">{
+                                // Extract just the "Response X" part
+                                responsePattern := regexp.MustCompile(`Response [A-Z]`)
+                                var results []string
+                                for _, match := range numberedMatches </span><span class="cov8" title="1">{
+                                        if resp := responsePattern.FindString(match); resp != "" </span><span class="cov8" title="1">{
+                                                results = append(results, resp)
+                                        }</span>
+                                }
+                                <span class="cov8" title="1">return results</span>
+                        }
+
+                        // Fallback: Extract all "Response X" patterns in order
+                        <span class="cov8" title="1">responsePattern := regexp.MustCompile(`Response [A-Z]`)
+                        matches := responsePattern.FindAllString(rankingSection, -1)
+                        if len(matches) &gt; 0 </span><span class="cov8" title="1">{
+                                return matches
+                        }</span>
+                }
+        }
+
+        // Fallback: try to find any "Response X" patterns in order
+        <span class="cov8" title="1">responsePattern := regexp.MustCompile(`Response [A-Z]`)
+        matches := responsePattern.FindAllString(rankingText, -1)
+        return matches</span>
+}
+
+// CalculateAggregateRankings computes aggregate rankings across all models.
+// Calculates the average rank position for each model based on peer rankings.
+// Returns a slice of aggregate rankings sorted by average rank (lower is better).
+func CalculateAggregateRankings(stage2Results []Stage2Ranking, labelToModel map[string]string) []AggregateRanking <span class="cov8" title="1">{
+        // Track positions for each model
+        modelPositions := make(map[string][]int)
+
+        for _, ranking := range stage2Results </span><span class="cov8" title="1">{
+                parsed := ranking.ParsedRanking
+
+                for position, label := range parsed </span><span class="cov8" title="1">{
+                        if modelName, ok := labelToModel[label]; ok </span><span class="cov8" title="1">{
+                                modelPositions[modelName] = append(modelPositions[modelName], position+1) // position+1 because 0-indexed
+                        }</span>
+                }
+        }
+
+        // Calculate average position for each model
+        <span class="cov8" title="1">var aggregate []AggregateRanking
+        for model, positions := range modelPositions </span><span class="cov8" title="1">{
+                if len(positions) &gt; 0 </span><span class="cov8" title="1">{
+                        sum := 0
+                        for _, pos := range positions </span><span class="cov8" title="1">{
+                                sum += pos
+                        }</span>
+                        <span class="cov8" title="1">avgRank := float64(sum) / float64(len(positions))
+
+                        aggregate = append(aggregate, AggregateRanking{
+                                Model:         model,
+                                AverageRank:   avgRank,
+                                RankingsCount: len(positions),
+                        })</span>
+                }
+        }
+
+        // Sort by average rank (lower is better)
+        <span class="cov8" title="1">sort.Slice(aggregate, func(i, j int) bool </span><span class="cov8" title="1">{
+                return aggregate[i].AverageRank &lt; aggregate[j].AverageRank
+        }</span>)
+
+        <span class="cov8" title="1">return aggregate</span>
+}
+
+// GenerateConversationTitle generates a short title for a conversation.
+// Uses a fast model (gemini-2.5-flash) to create a 3-5 word summary of the user's query.
+// Returns the generated title or an error if generation fails.
+func GenerateConversationTitle(ctx context.Context, userQuery string) (string, error) <span class="cov8" title="1">{
+        titlePrompt := fmt.Sprintf(`Generate a very short title (3-5 words maximum) that summarizes the following question.
+The title should be concise and descriptive. Do not use quotes or punctuation in the title.
+
+Question: %s
+
+Title:`, userQuery)
+
+        messages := []OpenRouterMessage{
+                {Role: "user", Content: titlePrompt},
+        }
+
+        // Use gemini-2.5-flash for fast title generation
+        response, err := QueryModel(ctx, "google/gemini-2.5-flash", messages, TitleGenTimeout)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("title generation failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">title := strings.TrimSpace(response.Content)
+
+        // Clean up the title - remove quotes
+        title = strings.Trim(title, "\"'")
+
+        // Truncate if too long
+        if len(title) &gt; 50 </span><span class="cov8" title="1">{
+                title = title[:47] + "..."
+        }</span>
+
+        <span class="cov8" title="1">return title, nil</span>
+}
+
+// RunFullCouncil runs the complete 3-stage council process.
+// Orchestrates all three stages: parallel model queries, anonymized peer review,
+// and chairman synthesis. Returns results from all stages plus metadata including
+// rankings and label mappings, or an error if any critical stage fails.
+func RunFullCouncil(ctx context.Context, userQuery string) ([]Stage1Response, []Stage2Ranking, Stage3Response, Metadata, error) <span class="cov8" title="1">{
+        // Stage 1: Collect responses
+        stage1Results, err := Stage1CollectResponses(ctx, userQuery)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, Stage3Response{}, Metadata{}, fmt.Errorf("stage 1 failed: %w", err)
+        }</span>
+
+        // If no models responded successfully, return error
+        <span class="cov8" title="1">if len(stage1Results) == 0 </span><span class="cov8" title="1">{
+                return nil, nil, Stage3Response{}, Metadata{},
+                        fmt.Errorf("all council models failed to respond")
+        }</span>
+
+        // Stage 2: Collect rankings
+        <span class="cov8" title="1">stage2Results, labelToModel, err := Stage2CollectRankings(ctx, userQuery, stage1Results)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, Stage3Response{}, Metadata{}, fmt.Errorf("stage 2 failed: %w", err)
+        }</span>
+
+        // Calculate aggregate rankings
+        <span class="cov8" title="1">aggregateRankings := CalculateAggregateRankings(stage2Results, labelToModel)
+
+        // Stage 3: Synthesize final answer
+        stage3Result, err := Stage3SynthesizeFinal(ctx, userQuery, stage1Results, stage2Results)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, Stage3Response{}, Metadata{}, fmt.Errorf("stage 3 failed: %w", err)
+        }</span>
+
+        // Build metadata
+        <span class="cov8" title="1">metadata := Metadata{
+                LabelToModel:      labelToModel,
+                AggregateRankings: aggregateRankings,
+        }
+
+        return stage1Results, stage2Results, *stage3Result, metadata, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+
+        "github.com/gin-contrib/cors"
+        "github.com/gin-gonic/gin"
+        "github.com/google/uuid"
+)
+
+func main() <span class="cov0" title="0">{
+        // Load configuration
+        LoadConfig()
+
+        // Create Gin router
+        router := gin.Default()
+
+        // Request size limit middleware
+        router.Use(func(c *gin.Context) </span><span class="cov0" title="0">{
+                c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxRequestBodySize)
+                c.Next()
+        }</span>)
+
+        // CORS middleware
+        <span class="cov0" title="0">router.Use(cors.New(cors.Config{
+                AllowOrigins:     CORSAllowedOrigins,
+                AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+                AllowHeaders:     []string{"Content-Type"},
+                AllowCredentials: true,
+        }))
+
+        // Routes
+        router.GET("/", healthCheck)
+        router.GET("/api/conversations", listConversationsHandler)
+        router.POST("/api/conversations", createConversationHandler)
+        router.GET("/api/conversations/:id", getConversationHandler)
+        router.POST("/api/conversations/:id/message", sendMessageHandler)
+        router.POST("/api/conversations/:id/message/stream", sendMessageStreamHandler)
+
+        // Start server
+        log.Println("Starting LLM Council backend on port 8001...")
+        if err := router.Run(":8001"); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to start server: %v", err)
+        }</span>
+}
+
+// healthCheck returns a simple health check response.
+// GET / - Returns service status information.
+func healthCheck(c *gin.Context) <span class="cov8" title="1">{
+        c.JSON(http.StatusOK, gin.H{
+                "status":  "ok",
+                "service": "LLM Council API",
+        })
+}</span>
+
+// listConversationsHandler lists all conversations with metadata only.
+// GET /api/conversations - Returns array of conversation metadata sorted by date.
+func listConversationsHandler(c *gin.Context) <span class="cov8" title="1">{
+        conversations, err := ListConversations()
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to list conversations: %v", err),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, conversations)</span>
+}
+
+// createConversationHandler creates a new conversation.
+// POST /api/conversations - Generates a new UUID and creates an empty conversation.
+func createConversationHandler(c *gin.Context) <span class="cov8" title="1">{
+        // Generate new UUID
+        conversationID := uuid.New().String()
+
+        // Create conversation
+        conversation, err := CreateConversation(conversationID)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to create conversation: %v", err),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, conversation)</span>
+}
+
+// getConversationHandler gets a specific conversation by ID.
+// GET /api/conversations/:id - Returns full conversation including all messages.
+func getConversationHandler(c *gin.Context) <span class="cov8" title="1">{
+        conversationID := c.Param("id")
+
+        conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to get conversation: %v", err),
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusNotFound, gin.H{
+                        "error": "Conversation not found",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(http.StatusOK, conversation)</span>
+}
+
+// sendMessageHandler sends a message and runs the 3-stage council process.
+// POST /api/conversations/:id/message - Runs full council and returns all stages at once.
+// Use sendMessageStreamHandler for SSE streaming version.
+func sendMessageHandler(c *gin.Context) <span class="cov8" title="1">{
+        conversationID := c.Param("id")
+
+        // Parse request
+        var request SendMessageRequest
+        if err := c.ShouldBindJSON(&amp;request); err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": fmt.Sprintf("Invalid request: %v", err),
+                })
+                return
+        }</span>
+
+        // Check if conversation exists
+        <span class="cov8" title="1">conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to get conversation: %v", err),
+                })
+                return
+        }</span>
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusNotFound, gin.H{
+                        "error": "Conversation not found",
+                })
+                return
+        }</span>
+
+        // Check if this is the first message
+        <span class="cov8" title="1">isFirstMessage := len(conversation.Messages) == 0
+
+        // Add user message
+        if err := AddUserMessage(conversationID, request.Content); err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to add user message: %v", err),
+                })
+                return
+        }</span>
+
+        // Generate title if first message (run in background)
+        <span class="cov8" title="1">if isFirstMessage </span><span class="cov8" title="1">{
+                go func() </span><span class="cov8" title="1">{
+                        ctx := context.Background()
+                        title, err := GenerateConversationTitle(ctx, request.Content)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to generate title: %v", err)
+                                // Use default title on error
+                                UpdateConversationTitle(conversationID, "New Conversation")
+                        }</span> else<span class="cov8" title="1"> {
+                                UpdateConversationTitle(conversationID, title)
+                        }</span>
+                }()
+        }
+
+        // Run the 3-stage council process
+        <span class="cov8" title="1">ctx := context.Background()
+        stage1, stage2, stage3, metadata, err := RunFullCouncil(ctx, request.Content)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Council process failed: %v", err),
+                })
+                return
+        }</span>
+
+        // Add assistant message
+        <span class="cov8" title="1">if err := AddAssistantMessage(conversationID, stage1, stage2, stage3); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to add assistant message: %v", err),
+                })
+                return
+        }</span>
+
+        // Return response
+        <span class="cov8" title="1">c.JSON(http.StatusOK, SendMessageResponse{
+                Stage1:   stage1,
+                Stage2:   stage2,
+                Stage3:   stage3,
+                Metadata: metadata,
+        })</span>
+}
+
+// sendMessageStreamHandler sends a message and streams the 3-stage council process via SSE.
+// POST /api/conversations/:id/message/stream - Streams progress events as each stage completes.
+// Events: stage1_start, stage1_complete, stage2_start, stage2_complete, stage3_start, stage3_complete, complete.
+func sendMessageStreamHandler(c *gin.Context) <span class="cov8" title="1">{
+        conversationID := c.Param("id")
+
+        // Parse request
+        var request SendMessageRequest
+        if err := c.ShouldBindJSON(&amp;request); err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": fmt.Sprintf("Invalid request: %v", err),
+                })
+                return
+        }</span>
+
+        // Check if conversation exists
+        <span class="cov8" title="1">conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": fmt.Sprintf("Failed to get conversation: %v", err),
+                })
+                return
+        }</span>
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                c.JSON(http.StatusNotFound, gin.H{
+                        "error": "Conversation not found",
+                })
+                return
+        }</span>
+
+        // Set SSE headers
+        <span class="cov8" title="1">c.Header("Content-Type", "text/event-stream")
+        c.Header("Cache-Control", "no-cache")
+        c.Header("Connection", "keep-alive")
+
+        // Check if this is the first message
+        isFirstMessage := len(conversation.Messages) == 0
+
+        // Add user message
+        if err := AddUserMessage(conversationID, request.Content); err != nil </span><span class="cov0" title="0">{
+                sendSSEError(c, fmt.Sprintf("Failed to add user message: %v", err))
+                return
+        }</span>
+
+        <span class="cov8" title="1">ctx := context.Background()
+
+        // Start title generation in background if first message
+        var titleChan chan string
+        if isFirstMessage </span><span class="cov8" title="1">{
+                titleChan = make(chan string, 1)
+                go func() </span><span class="cov8" title="1">{
+                        title, err := GenerateConversationTitle(ctx, request.Content)
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to generate title: %v", err)
+                                UpdateConversationTitle(conversationID, "New Conversation")
+                        }</span> else<span class="cov8" title="1"> {
+                                UpdateConversationTitle(conversationID, title)
+                                titleChan &lt;- title
+                        }</span>
+                        <span class="cov8" title="1">close(titleChan)</span>
+                }()
+        }
+
+        // Stage 1
+        <span class="cov8" title="1">sendSSEEvent(c, gin.H{"type": "stage1_start"})
+        stage1, err := Stage1CollectResponses(ctx, request.Content)
+        if err != nil </span><span class="cov0" title="0">{
+                sendSSEError(c, fmt.Sprintf("Stage 1 failed: %v", err))
+                return
+        }</span>
+        <span class="cov8" title="1">sendSSEEvent(c, gin.H{"type": "stage1_complete", "data": stage1})
+
+        // Stage 2
+        sendSSEEvent(c, gin.H{"type": "stage2_start"})
+        stage2, labelToModel, err := Stage2CollectRankings(ctx, request.Content, stage1)
+        if err != nil </span><span class="cov0" title="0">{
+                sendSSEError(c, fmt.Sprintf("Stage 2 failed: %v", err))
+                return
+        }</span>
+        <span class="cov8" title="1">aggregateRankings := CalculateAggregateRankings(stage2, labelToModel)
+        sendSSEEvent(c, gin.H{
+                "type": "stage2_complete",
+                "data": stage2,
+                "metadata": gin.H{
+                        "label_to_model":      labelToModel,
+                        "aggregate_rankings":  aggregateRankings,
+                },
+        })
+
+        // Stage 3
+        sendSSEEvent(c, gin.H{"type": "stage3_start"})
+        stage3, err := Stage3SynthesizeFinal(ctx, request.Content, stage1, stage2)
+        if err != nil </span><span class="cov0" title="0">{
+                sendSSEError(c, fmt.Sprintf("Stage 3 failed: %v", err))
+                return
+        }</span>
+        <span class="cov8" title="1">sendSSEEvent(c, gin.H{"type": "stage3_complete", "data": stage3})
+
+        // Wait for title if it was being generated
+        if titleChan != nil </span><span class="cov8" title="1">{
+                if title := &lt;-titleChan; title != "" </span><span class="cov8" title="1">{
+                        sendSSEEvent(c, gin.H{"type": "title_complete", "data": gin.H{"title": title}})
+                }</span>
+        }
+
+        // Save complete assistant message (check for nil first)
+        <span class="cov8" title="1">if stage3 == nil </span><span class="cov0" title="0">{
+                sendSSEError(c, "Stage 3 returned no result")
+                return
+        }</span>
+        <span class="cov8" title="1">if err := AddAssistantMessage(conversationID, stage1, stage2, *stage3); err != nil </span><span class="cov0" title="0">{
+                sendSSEError(c, fmt.Sprintf("Failed to save message: %v", err))
+                return
+        }</span>
+
+        // Send completion event
+        <span class="cov8" title="1">sendSSEEvent(c, gin.H{"type": "complete"})</span>
+}
+
+// sendSSEEvent sends a Server-Sent Event.
+// Marshals data to JSON and writes as SSE format with "data: " prefix.
+func sendSSEEvent(c *gin.Context, data interface{}) <span class="cov8" title="1">{
+        jsonData, err := json.Marshal(data)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to marshal SSE event: %v", err)
+                return
+        }</span>
+        <span class="cov8" title="1">c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(jsonData)))
+        c.Writer.Flush()</span>
+}
+
+// sendSSEError sends an error event via SSE.
+// Convenience wrapper for sending error-type SSE events.
+func sendSSEError(c *gin.Context, message string) <span class="cov8" title="1">{
+        sendSSEEvent(c, gin.H{"type": "error", "message": message})
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
+
+import (
+        "bytes"
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log"
+        "net/http"
+        "sync"
+        "time"
+
+        "golang.org/x/sync/errgroup"
+)
+
+// QueryModel queries a single model via OpenRouter API with the given timeout.
+// Returns the model's response or an error if the request fails.
+func QueryModel(ctx context.Context, model string, messages []OpenRouterMessage, timeout time.Duration) (*OpenRouterResponse, error) <span class="cov8" title="1">{
+        // Create HTTP client with timeout
+        client := &amp;http.Client{
+                Timeout: timeout,
+        }
+
+        // Build request payload
+        payload := OpenRouterRequest{
+                Model:    model,
+                Messages: messages,
+        }
+
+        // Marshal payload to JSON
+        payloadBytes, err := json.Marshal(payload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to marshal request: %w", err)
+        }</span>
+
+        // Create HTTP request
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "POST", OpenRouterAPIURL, bytes.NewBuffer(payloadBytes))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        // Set headers
+        <span class="cov8" title="1">req.Header.Set("Authorization", "Bearer "+OpenRouterAPIKey)
+        req.Header.Set("Content-Type", "application/json")
+
+        // Make the request
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to make request: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        // Check status code
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                bodyBytes, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(bodyBytes))
+        }</span>
+
+        // Read response body
+        <span class="cov8" title="1">bodyBytes, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read response body: %w", err)
+        }</span>
+
+        // Parse response
+        <span class="cov8" title="1">var apiResponse OpenRouterAPIResponse
+        if err := json.Unmarshal(bodyBytes, &amp;apiResponse); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        // Extract message from response
+        <span class="cov8" title="1">if len(apiResponse.Choices) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("no choices in response")
+        }</span>
+
+        <span class="cov8" title="1">message := apiResponse.Choices[0].Message
+        return &amp;OpenRouterResponse{
+                Content:          message.Content,
+                ReasoningDetails: message.ReasoningDetails,
+        }, nil</span>
+}
+
+// QueryModelsParallel queries multiple models in parallel using goroutines.
+// Uses errgroup for parallel execution with graceful degradation - failed models
+// return nil in the results map while successful models return their responses.
+// Returns a map of model names to responses, or an error if all models fail.
+func QueryModelsParallel(ctx context.Context, models []string, messages []OpenRouterMessage) (map[string]*OpenRouterResponse, error) <span class="cov8" title="1">{
+        // Create errgroup for parallel execution
+        g, ctx := errgroup.WithContext(ctx)
+
+        // Results map and mutex for thread-safe writes
+        results := make(map[string]*OpenRouterResponse)
+        var mu sync.Mutex
+
+        // Launch goroutine for each model
+        for _, model := range models </span><span class="cov8" title="1">{
+                model := model // Capture loop variable
+                g.Go(func() error </span><span class="cov8" title="1">{
+                        // Query the model with 120 second timeout
+                        response, err := QueryModel(ctx, model, messages, 120*time.Second)
+
+                        // Graceful degradation: log error but don't fail entire request
+                        if err != nil </span><span class="cov8" title="1">{
+                                log.Printf("Error querying model %s: %v", model, err)
+                                mu.Lock()
+                                results[model] = nil
+                                mu.Unlock()
+                                return nil // Don't propagate error, continue with other models
+                        }</span>
+
+                        // Store successful response
+                        <span class="cov8" title="1">mu.Lock()
+                        results[model] = response
+                        mu.Unlock()
+                        return nil</span>
+                })
+        }
+
+        // Wait for all goroutines to complete
+        <span class="cov8" title="1">if err := g.Wait(); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return results, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "sort"
+        "time"
+)
+
+// EnsureDataDir ensures the data directory exists.
+// Creates the directory with 0755 permissions if it doesn't exist.
+func EnsureDataDir() error <span class="cov8" title="1">{
+        return os.MkdirAll(DataDir, 0755)
+}</span>
+
+// GetConversationPath returns the file path for a conversation.
+// Joins the data directory with the conversation ID and .json extension.
+func GetConversationPath(conversationID string) string <span class="cov8" title="1">{
+        return filepath.Join(DataDir, conversationID+".json")
+}</span>
+
+// CreateConversation creates a new conversation with the given ID.
+// Initializes an empty conversation with default title and saves it to disk.
+// Returns the created conversation or an error if creation fails.
+func CreateConversation(conversationID string) (*Conversation, error) <span class="cov8" title="1">{
+        // Ensure data directory exists
+        if err := EnsureDataDir(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create data directory: %w", err)
+        }</span>
+
+        // Create new conversation
+        <span class="cov8" title="1">conversation := &amp;Conversation{
+                ID:        conversationID,
+                CreatedAt: time.Now().UTC(),
+                Title:     "New Conversation",
+                Messages:  []Message{},
+        }
+
+        // Save to file
+        if err := SaveConversation(conversation); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return conversation, nil</span>
+}
+
+// GetConversation loads a conversation from storage by ID.
+// Returns nil without error if the conversation doesn't exist.
+// Returns an error only if file reading or JSON parsing fails.
+func GetConversation(conversationID string) (*Conversation, error) <span class="cov8" title="1">{
+        path := GetConversationPath(conversationID)
+
+        // Check if file exists
+        if _, err := os.Stat(path); os.IsNotExist(err) </span><span class="cov8" title="1">{
+                return nil, nil // Not found, return nil without error
+        }</span>
+
+        // Read file
+        <span class="cov8" title="1">data, err := os.ReadFile(path)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read conversation file: %w", err)
+        }</span>
+
+        // Parse JSON
+        <span class="cov8" title="1">var conversation Conversation
+        if err := json.Unmarshal(data, &amp;conversation); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to parse conversation JSON: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;conversation, nil</span>
+}
+
+// SaveConversation saves a conversation to storage.
+// Writes the conversation as formatted JSON to disk.
+// Returns an error if directory creation, marshaling, or writing fails.
+func SaveConversation(conversation *Conversation) error <span class="cov8" title="1">{
+        // Ensure data directory exists
+        if err := EnsureDataDir(); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to create data directory: %w", err)
+        }</span>
+
+        // Marshal to JSON with indentation
+        <span class="cov8" title="1">data, err := json.MarshalIndent(conversation, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to marshal conversation: %w", err)
+        }</span>
+
+        // Write to file
+        <span class="cov8" title="1">path := GetConversationPath(conversation.ID)
+        if err := os.WriteFile(path, data, 0644); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to write conversation file: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ListConversations lists all conversations with metadata only.
+// Returns a slice of conversation metadata sorted by creation time (newest first).
+// Silently skips invalid or unreadable files. Returns empty slice if no conversations exist.
+func ListConversations() ([]ConversationMetadata, error) <span class="cov8" title="1">{
+        // Ensure data directory exists
+        if err := EnsureDataDir(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create data directory: %w", err)
+        }</span>
+
+        // Read directory
+        <span class="cov8" title="1">entries, err := os.ReadDir(DataDir)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read data directory: %w", err)
+        }</span>
+
+        // Collect metadata (initialize with empty slice to avoid null in JSON)
+        <span class="cov8" title="1">conversations := make([]ConversationMetadata, 0)
+        for _, entry := range entries </span><span class="cov8" title="1">{
+                if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Read file
+                <span class="cov8" title="1">path := filepath.Join(DataDir, entry.Name())
+                data, err := os.ReadFile(path)
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span> // Skip files we can't read
+                }
+
+                // Parse JSON (just enough to get metadata)
+                <span class="cov8" title="1">var conv Conversation
+                if err := json.Unmarshal(data, &amp;conv); err != nil </span><span class="cov8" title="1">{
+                        continue</span> // Skip invalid JSON
+                }
+
+                // Extract metadata
+                <span class="cov8" title="1">conversations = append(conversations, ConversationMetadata{
+                        ID:           conv.ID,
+                        CreatedAt:    conv.CreatedAt,
+                        Title:        conv.Title,
+                        MessageCount: len(conv.Messages),
+                })</span>
+        }
+
+        // Sort by creation time, newest first
+        <span class="cov8" title="1">sort.Slice(conversations, func(i, j int) bool </span><span class="cov8" title="1">{
+                return conversations[i].CreatedAt.After(conversations[j].CreatedAt)
+        }</span>)
+
+        <span class="cov8" title="1">return conversations, nil</span>
+}
+
+// AddUserMessage adds a user message to a conversation.
+// Appends the message to the conversation's message history and saves to disk.
+// Returns an error if the conversation doesn't exist or saving fails.
+func AddUserMessage(conversationID string, content string) error <span class="cov8" title="1">{
+        // Load conversation
+        conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("conversation %s not found", conversationID)
+        }</span>
+
+        // Append user message
+        <span class="cov8" title="1">conversation.Messages = append(conversation.Messages, Message{
+                Role:    "user",
+                Content: content,
+        })
+
+        // Save conversation
+        return SaveConversation(conversation)</span>
+}
+
+// AddAssistantMessage adds an assistant message with all 3 stages.
+// Stores the complete council results (stage1, stage2, stage3) as a single message.
+// Returns an error if the conversation doesn't exist or saving fails.
+func AddAssistantMessage(conversationID string, stage1 []Stage1Response, stage2 []Stage2Ranking, stage3 Stage3Response) error <span class="cov8" title="1">{
+        // Load conversation
+        conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("conversation %s not found", conversationID)
+        }</span>
+
+        // Append assistant message
+        <span class="cov8" title="1">conversation.Messages = append(conversation.Messages, Message{
+                Role:   "assistant",
+                Stage1: stage1,
+                Stage2: stage2,
+                Stage3: &amp;stage3,
+        })
+
+        // Save conversation
+        return SaveConversation(conversation)</span>
+}
+
+// UpdateConversationTitle updates the title of a conversation.
+// Loads the conversation, updates its title field, and saves back to disk.
+// Returns an error if the conversation doesn't exist or saving fails.
+func UpdateConversationTitle(conversationID string, title string) error <span class="cov8" title="1">{
+        // Load conversation
+        conversation, err := GetConversation(conversationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if conversation == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("conversation %s not found", conversationID)
+        }</span>
+
+        // Update title
+        <span class="cov8" title="1">conversation.Title = title
+
+        // Save conversation
+        return SaveConversation(conversation)</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
