@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import BillsPanel from './components/BillsPanel';
 import { api } from './api';
 import './App.css';
 
@@ -9,6 +10,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showBillsPanel, setShowBillsPanel] = useState(false);
 
   // Load conversations on mount
   useEffect(() => {
@@ -55,6 +57,10 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+  };
+
+  const handleToggleBills = () => {
+    setShowBillsPanel(!showBillsPanel);
   };
 
   const handleSendMessage = async (content) => {
@@ -188,12 +194,15 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onToggleBills={handleToggleBills}
+        showBillsPanel={showBillsPanel}
       />
       <ChatInterface
         conversation={currentConversation}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
       />
+      {showBillsPanel && <BillsPanel onClose={() => setShowBillsPanel(false)} />}
     </div>
   );
 }
