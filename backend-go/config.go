@@ -36,7 +36,9 @@ var (
 	TitleGenTimeout   = 30 * time.Second
 
 	// CORS allowed origins (configurable via environment)
-	CORSAllowedOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
+	// In development (empty/default), allows any localhost port
+	// In production, set CORS_ALLOWED_ORIGINS environment variable
+	CORSAllowedOrigins = []string{}
 
 	// MaxRequestBodySize is the maximum allowed request body size (1MB)
 	MaxRequestBodySize int64 = 1 << 20

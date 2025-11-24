@@ -32,9 +32,23 @@ func main() {
 		c.Next()
 	})
 
-	// CORS middleware
+	// CORS middleware with dynamic origin validation
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     CORSAllowedOrigins,
+		AllowOriginFunc: func(origin string) bool {
+			// In production, use environment-configured origins
+			if len(CORSAllowedOrigins) > 0 && CORSAllowedOrigins[0] != "" {
+				for _, allowedOrigin := range CORSAllowedOrigins {
+					if origin == allowedOrigin {
+						return true
+					}
+				}
+				return false
+			}
+			// In development, allow any localhost/127.0.0.1 origin
+			return len(origin) > 0 && (
+				len(origin) >= 16 && origin[:16] == "http://localhost" ||
+				len(origin) >= 14 && origin[:14] == "http://127.0.0")
+		},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type"},
 		AllowCredentials: true,
