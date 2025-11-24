@@ -2,27 +2,61 @@
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+A local web application that queries multiple LLMs simultaneously, has them anonymously review each other's responses, and synthesizes a final answer. Instead of asking one LLM, get the collective wisdom of your "LLM Council."
 
-In a bit more detail, here is what happens when you submit a query:
+## What It Does
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+When you submit a query:
+
+1. **Stage 1: Parallel Queries** - All council LLMs receive your question and respond independently
+2. **Stage 2: Anonymous Peer Review** - Each LLM ranks the others' responses (identities hidden to prevent bias)
+3. **Stage 3: Final Synthesis** - A Chairman LLM compiles all responses into one comprehensive answer
+
+You see all individual responses, peer rankings, and the final synthesis in a ChatGPT-like interface.
+
+## Quick Start (5 minutes)
+
+**Prerequisites:** Go 1.21+, Node.js 18+, npm
+
+```bash
+# 1. Clone and enter directory
+git clone <repo-url>
+cd llm-senate-council-upgrade
+
+# 2. Get OpenRouter API key at https://openrouter.ai/
+cp .env.example .env
+# Edit .env and add your key: OPENROUTER_API_KEY=sk-or-v1-...
+
+# 3. Build backend and install frontend dependencies
+cd backend-go && go build -o llm-council && cd ..
+cd frontend && npm install && cd ..
+
+# 4. Start everything (single command)
+./start-go.sh
+```
+
+Open http://localhost:5173 and start chatting with your LLM Council.
 
 ## Vibe Code Alert
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+This project was 99% vibe coded as a fun Saturday hack for exploring and evaluating multiple LLMs side by side while [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's provided as-is for inspiration. Code is ephemeral now and libraries are over - ask your LLM to modify it however you like.
 
-## Setup
+## Detailed Setup
+
+### Prerequisites
+
+- **Go** 1.21 or higher ([install](https://go.dev/doc/install))
+- **Node.js** 18+ and npm ([install](https://nodejs.org/))
+- **OpenRouter API key** with credits ([get one](https://openrouter.ai/))
 
 ### 1. Install Dependencies
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
-
-**Backend:**
+**Go Backend:**
 ```bash
-uv sync
+cd backend-go
+go mod download
+go build -o llm-council
+cd ..
 ```
 
 **Frontend:**
@@ -34,44 +68,46 @@ cd ..
 
 ### 2. Configure API Key
 
-Create a `.env` file in the project root:
+Create `.env` in project root:
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
+cp .env.example .env
 ```
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+Edit `.env` and add your OpenRouter API key:
+```bash
+OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+```
+
+Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase credits or enable automatic top-up.
 
 ### 3. Configure Models (Optional)
 
-Edit `backend/config.py` to customize the council:
+Default council uses GPT-4, Claude, Gemini, and Grok. To customize, edit `backend-go/config.go`:
 
-```python
-COUNCIL_MODELS = [
+```go
+var CouncilModels = []string{
     "openai/gpt-5.1",
     "google/gemini-3-pro-preview",
     "anthropic/claude-sonnet-4.5",
     "x-ai/grok-4",
-]
+}
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
+var ChairmanModel = "google/gemini-3-pro-preview"
 ```
+
+After changes, rebuild: `cd backend-go && go build -o llm-council && cd ..`
 
 ## Running the Application
 
-**Recommended: Go Backend (Fast, Production-Ready)**
+**Option 1: Automated Start (Recommended)**
 ```bash
 ./start-go.sh
 ```
 
-**Legacy: Python Backend**
-```bash
-./start.sh
-```
+This script starts both the Go backend (port 8001) and frontend (port 5173). Press Ctrl+C to stop both servers.
 
-**Manual Startup:**
-
-*Go Backend (Recommended):*
+**Option 2: Manual Start**
 ```bash
 # Terminal 1 - Backend
 cd backend-go && ./llm-council
@@ -80,46 +116,104 @@ cd backend-go && ./llm-council
 cd frontend && npm run dev
 ```
 
-*Python Backend (Legacy):*
-```bash
-# Terminal 1 - Backend
-uv run python -m backend.main
-
-# Terminal 2 - Frontend
-cd frontend && npm run dev
-```
-
 Then open http://localhost:5173 in your browser.
 
-## Backend Options
+**Rebuilding After Code Changes:**
+```bash
+cd backend-go
+go build -o llm-council
+cd ..
+```
 
-This project now includes **two backend implementations**:
+## Architecture
 
-### Go Backend (`backend-go/`) - **Recommended**
-- ✅ Single 27MB binary, no runtime dependencies
-- ✅ 100x faster startup (<10ms vs ~1s)
-- ✅ 3x lower memory usage (~30MB vs ~100MB)
-- ✅ Native concurrency with goroutines
-- ✅ Type-safe with compile-time checks
-- ✅ Production-ready
+### Backend (Go)
 
-See `backend-go/README.md` and `MIGRATION.md` for details.
+Single-binary server built with Gin framework:
+- **Port:** 8001
+- **Concurrency:** Native goroutines for parallel LLM queries
+- **Storage:** JSON files in `data/conversations/`
+- **API:** RESTful endpoints + Server-Sent Events for streaming
 
-### Python Backend (`backend/`) - Legacy
-- Original FastAPI implementation
-- Maintained for reference and fallback
-- Fully functional but superseded by Go
+Key files:
+- `main.go` - HTTP server and route handlers
+- `council.go` - 3-stage orchestration logic
+- `openrouter.go` - API client with parallel execution
+- `storage.go` - JSON persistence layer
 
-Both backends are **100% compatible** - they use the same API contract, data format, and work with the same React frontend. You can switch between them instantly.
+See `backend-go/README.md` for detailed architecture.
 
-## Tech Stack
+### Frontend (React)
 
-**Backend Options:**
-- **Go (Recommended):** Gin framework, native goroutines, OpenRouter API
-- **Python (Legacy):** FastAPI, async httpx, OpenRouter API
+Vite-powered SPA with tab-based interface:
+- **Port:** 5173 (development)
+- **Key components:** ChatInterface, Stage1/2/3 display, Conversation list
+- **Styling:** Light theme, markdown rendering with syntax highlighting
 
-**Frontend:** React + Vite, react-markdown for rendering
+### Tech Stack
 
-**Storage:** JSON files in `data/conversations/` (compatible between both backends)
+- **Backend:** Go 1.21+, Gin web framework, OpenRouter API
+- **Frontend:** React 19, Vite, react-markdown
+- **Storage:** JSON files (no database required)
+- **APIs:** OpenRouter for multi-model access
 
-**Package Management:** Go modules for Go, uv for Python, npm for JavaScript
+## Troubleshooting
+
+### "Error: .env file not found"
+Create `.env` in project root with `OPENROUTER_API_KEY=sk-or-v1-...`
+
+### Backend fails to start
+- Check if port 8001 is already in use: `lsof -i :8001`
+- Verify API key is valid at openrouter.ai
+- Ensure Go 1.21+ is installed: `go version`
+
+### Frontend shows "Failed to fetch"
+- Verify backend is running on http://localhost:8001
+- Check browser console for CORS errors
+- Try restarting both backend and frontend
+
+### Build errors
+```bash
+# Clean and rebuild
+cd backend-go
+rm llm-council
+go clean
+go build -o llm-council
+```
+
+### Models not responding
+- Check OpenRouter credits at openrouter.ai
+- Verify model names in `backend-go/config.go` match OpenRouter's API
+- Check backend logs for specific API errors
+
+### Permission denied on start-go.sh
+```bash
+chmod +x start-go.sh
+```
+
+## Project Structure
+
+```
+llm-senate-council-upgrade/
+├── backend-go/           # Go backend (recommended)
+│   ├── main.go          # HTTP server
+│   ├── council.go       # 3-stage logic
+│   ├── openrouter.go    # API client
+│   ├── storage.go       # JSON persistence
+│   ├── config.go        # Model configuration
+│   └── models.go        # Data structures
+├── frontend/            # React frontend
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── ChatInterface.jsx
+│   │   └── components/
+│   └── package.json
+├── data/                # Generated: conversation storage
+├── .env                 # Your API key (create from .env.example)
+├── .env.example         # Template
+└── start-go.sh          # Launch script
+```
+
+## Contributing
+
+This is a "vibe code" project - feel free to fork and modify as you see fit. No formal contribution process or support provided.
