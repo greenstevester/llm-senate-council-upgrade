@@ -112,4 +112,20 @@ export const api = {
       }
     }
   },
+
+  /**
+   * Fetch all bills before parliament.
+   * @param {object} options - Optional filters { refresh: bool }
+   */
+  async getBills(options = {}) {
+    const params = new URLSearchParams();
+    if (options.refresh) params.append('refresh', 'true');
+
+    const url = `${API_BASE}/api/bills${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch bills');
+    }
+    return response.json();
+  },
 };

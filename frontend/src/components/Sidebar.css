@@ -18,7 +18,14 @@
   color: #333;
 }
 
-.new-conversation-btn {
+.header-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.new-conversation-btn,
+.toggle-bills-btn {
   width: 100%;
   padding: 10px;
   background: #4a90e2;
@@ -31,9 +38,15 @@
   font-weight: 500;
 }
 
-.new-conversation-btn:hover {
+.new-conversation-btn:hover,
+.toggle-bills-btn:hover {
   background: #357abd;
   border-color: #357abd;
+}
+
+.toggle-bills-btn.active {
+  background: #2d6599;
+  border-color: #2d6599;
 }
 
 .conversation-list {

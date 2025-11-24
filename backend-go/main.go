@@ -6,15 +6,22 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// Global bills cache instance
+var billsCache *BillsCache
+
 func main() {
 	// Load configuration
 	LoadConfig()
+
+	// Initialize bills cache
+	billsCache = NewBillsCache(BillsCacheTTL)
 
 	// Create Gin router
 	router := gin.Default()
@@ -40,6 +47,7 @@ func main() {
 	router.GET("/api/conversations/:id", getConversationHandler)
 	router.POST("/api/conversations/:id/message", sendMessageHandler)
 	router.POST("/api/conversations/:id/message/stream", sendMessageStreamHandler)
+	router.GET("/api/bills", getBillsHandler)
 
 	// Start server
 	log.Println("Starting LLM Council backend on port 8001...")
@@ -330,4 +338,51 @@ func sendSSEEvent(c *gin.Context, data interface{}) {
 // Convenience wrapper for sending error-type SSE events.
 func sendSSEError(c *gin.Context, message string) {
 	sendSSEEvent(c, gin.H{"type": "error", "message": message})
+}
+
+// getBillsHandler fetches and returns all bills before parliament
+// GET /api/bills - Returns all bills with caching
+// Query params: ?refresh=true (force cache refresh)
+func getBillsHandler(c *gin.Context) {
+	// Check for refresh parameter
+	forceRefresh := c.Query("refresh") == "true"
+
+	// Try to get from cache first (unless refresh requested)
+	if !forceRefresh {
+		if cachedBills, ok := billsCache.Get(); ok {
+			log.Printf("Returning %d bills from cache", len(cachedBills))
+			c.JSON(http.StatusOK, BillsResponse{
+				Bills:       cachedBills,
+				CurrentPage: 1,
+				TotalPages:  CalculateTotalPages(len(cachedBills)),
+				HasNextPage: false,
+				LastUpdated: billsCache.GetLastUpdated(),
+			})
+			return
+		}
+	}
+
+	// Fetch fresh data
+	log.Println("Fetching fresh bills data from APH website...")
+	ctx := context.Background()
+	bills, err := FetchAllBills(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to fetch bills: %v", err),
+		})
+		return
+	}
+
+	// Update cache
+	billsCache.Set(bills)
+	log.Printf("Cached %d bills", len(bills))
+
+	// Return response
+	c.JSON(http.StatusOK, BillsResponse{
+		Bills:       bills,
+		CurrentPage: 1,
+		TotalPages:  CalculateTotalPages(len(bills)),
+		HasNextPage: false,
+		LastUpdated: time.Now(),
+	})
 }

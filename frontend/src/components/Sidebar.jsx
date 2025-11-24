@@ -6,14 +6,24 @@ export default function Sidebar({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  onToggleBills,
+  showBillsPanel,
 }) {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <h1>LLM Council</h1>
-        <button className="new-conversation-btn" onClick={onNewConversation}>
-          + New Conversation
-        </button>
+        <div className="header-buttons">
+          <button className="new-conversation-btn" onClick={onNewConversation}>
+            + New Conversation
+          </button>
+          <button
+            className={`toggle-bills-btn ${showBillsPanel ? 'active' : ''}`}
+            onClick={onToggleBills}
+          >
+            📋 Bills
+          </button>
+        </div>
       </div>
 
       <div className="conversation-list">

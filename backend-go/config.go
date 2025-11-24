@@ -40,6 +40,9 @@ var (
 
 	// MaxRequestBodySize is the maximum allowed request body size (1MB)
 	MaxRequestBodySize int64 = 1 << 20
+
+	// BillsCacheTTL is the time-to-live for bills cache (default 5 minutes)
+	BillsCacheTTL = 5 * time.Minute
 )
 
 // LoadConfig loads configuration from environment variables
