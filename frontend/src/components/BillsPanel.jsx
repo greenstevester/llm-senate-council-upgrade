@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { api } from '../api';
 import './BillsPanel.css';
 
-export default function BillsPanel({ onClose }) {
+export default function BillsPanel({ onClose, onSelectContent }) {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,15 +88,45 @@ export default function BillsPanel({ onClose }) {
           <div className="no-bills">No bills found</div>
         )}
         {!loading && !error && filteredBills.map(bill => (
-          <BillCard key={bill.id} bill={bill} />
+          <BillCard key={bill.id} bill={bill} onSelectContent={onSelectContent} />
         ))}
       </div>
     </div>
   );
 }
 
-function BillCard({ bill }) {
+function BillCard({ bill, onSelectContent }) {
   const [expanded, setExpanded] = useState(false);
+  const [loadingMemo, setLoadingMemo] = useState(false);
+
+  const handleExplanatoryMemoClick = async (e) => {
+    e.preventDefault();
+    if (!bill.explanatory_memo_url || !onSelectContent) return;
+
+    setLoadingMemo(true);
+    try {
+      const result = await api.fetchURLContent(bill.explanatory_memo_url);
+      const prompt = `Please analyze this Explanatory Memorandum for the bill "${bill.title}":\n\n${result.content}`;
+      onSelectContent(prompt);
+    } catch (error) {
+      console.error('Failed to fetch explanatory memo:', error);
+
+      // Show user-friendly message explaining the limitation
+      const userChoice = confirm(
+        'The Australian Parliament website (ParlInfo) blocks automated access to protect their content.\n\n' +
+        'Would you like to:\n' +
+        '• Click "OK" to open the Explanatory Memorandum in a new tab (you can copy the content manually)\n' +
+        '• Click "Cancel" to close this message'
+      );
+
+      if (userChoice) {
+        // Open in new tab
+        window.open(bill.explanatory_memo_url, '_blank', 'noopener,noreferrer');
+      }
+    } finally {
+      setLoadingMemo(false);
+    }
+  };
 
   return (
     <div className="bill-card">
@@ -138,8 +169,12 @@ function BillCard({ bill }) {
               </a>
             )}
             {bill.explanatory_memo_url && (
-              <a href={bill.explanatory_memo_url} target="_blank" rel="noopener noreferrer">
-                Explanatory Memorandum
+              <a
+                href={bill.explanatory_memo_url}
+                onClick={handleExplanatoryMemoClick}
+                className={loadingMemo ? 'loading' : ''}
+              >
+                {loadingMemo ? 'Loading...' : 'Explanatory Memorandum'}
               </a>
             )}
           </div>

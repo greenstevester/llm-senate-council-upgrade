@@ -62,6 +62,7 @@ func main() {
 	router.POST("/api/conversations/:id/message", sendMessageHandler)
 	router.POST("/api/conversations/:id/message/stream", sendMessageStreamHandler)
 	router.GET("/api/bills", getBillsHandler)
+	router.POST("/api/fetch-url", fetchURLHandler)
 
 	// Start server
 	log.Println("Starting LLM Council backend on port 8001...")
@@ -398,5 +399,35 @@ func getBillsHandler(c *gin.Context) {
 		TotalPages:  CalculateTotalPages(len(bills)),
 		HasNextPage: false,
 		LastUpdated: time.Now(),
+	})
+}
+
+// fetchURLHandler fetches and extracts content from a given URL
+// POST /api/fetch-url - Body: {"url": "https://..."}
+func fetchURLHandler(c *gin.Context) {
+	// Parse request
+	var request struct {
+		URL string `json:"url" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Invalid request: %v", err),
+		})
+		return
+	}
+
+	// Fetch content
+	ctx := context.Background()
+	content, err := FetchURLContent(ctx, request.URL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to fetch URL content: %v", err),
+		})
+		return
+	}
+
+	// Return content
+	c.JSON(http.StatusOK, gin.H{
+		"content": content,
 	})
 }

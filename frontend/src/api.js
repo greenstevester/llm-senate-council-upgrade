@@ -128,4 +128,23 @@ export const api = {
     }
     return response.json();
   },
+
+  /**
+   * Fetch content from a given URL.
+   * @param {string} url - The URL to fetch content from
+   * @returns {Promise<{content: string}>}
+   */
+  async fetchURLContent(url) {
+    const response = await fetch(`${API_BASE}/api/fetch-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch URL content');
+    }
+    return response.json();
+  },
 };

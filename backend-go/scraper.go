@@ -386,3 +386,83 @@ func CalculateTotalPages(billCount int) int {
 	}
 	return pages
 }
+
+// FetchURLContent fetches and extracts text content from a given URL
+// Returns the extracted text content, primarily for parliamentary documents
+func FetchURLContent(ctx context.Context, url string) (string, error) {
+	// Create HTTP request with context
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set comprehensive headers to mimic a real browser and avoid bot detection
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("Cache-Control", "max-age=0")
+	req.Header.Set("Referer", "https://www.aph.gov.au/")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "same-site")
+	req.Header.Set("Sec-Fetch-User", "?1")
+
+	// Create HTTP client with timeout and follow redirects
+	client := &http.Client{
+		Timeout: ScraperTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Allow up to 10 redirects
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			return nil
+		},
+	}
+
+	// Execute request
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch URL: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// Parse HTML
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse HTML: %w", err)
+	}
+
+	// Extract text content - focus on main content areas
+	// For ParlInfo pages, the content is typically in specific divs
+	var textContent strings.Builder
+
+	// Try to find main content area (adjust selectors based on actual page structure)
+	doc.Find("body").Each(func(i int, s *goquery.Selection) {
+		// Remove script and style elements
+		s.Find("script, style, nav, header, footer").Remove()
+
+		// Get text content
+		text := s.Text()
+
+		// Clean up whitespace
+		text = strings.TrimSpace(text)
+		text = regexp.MustCompile(`\s+`).ReplaceAllString(text, " ")
+
+		textContent.WriteString(text)
+	})
+
+	content := textContent.String()
+	if content == "" {
+		return "", fmt.Errorf("no content extracted from URL")
+	}
+
+	return content, nil
+}

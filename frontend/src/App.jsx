@@ -11,6 +11,7 @@ function App() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showBillsPanel, setShowBillsPanel] = useState(false);
+  const [inputText, setInputText] = useState('');
 
   // Load conversations on mount
   useEffect(() => {
@@ -61,6 +62,11 @@ function App() {
 
   const handleToggleBills = () => {
     setShowBillsPanel(!showBillsPanel);
+  };
+
+  const handleSelectContent = (content) => {
+    setInputText(content);
+    setShowBillsPanel(false); // Close the bills panel after selecting content
   };
 
   const handleSendMessage = async (content) => {
@@ -201,8 +207,15 @@ function App() {
         conversation={currentConversation}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        inputText={inputText}
+        onInputChange={setInputText}
       />
-      {showBillsPanel && <BillsPanel onClose={() => setShowBillsPanel(false)} />}
+      {showBillsPanel && (
+        <BillsPanel
+          onClose={() => setShowBillsPanel(false)}
+          onSelectContent={handleSelectContent}
+        />
+      )}
     </div>
   );
 }

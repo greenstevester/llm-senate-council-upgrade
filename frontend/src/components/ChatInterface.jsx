@@ -9,9 +9,18 @@ export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  inputText,
+  onInputChange,
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+
+  // Sync with external input text prop
+  useEffect(() => {
+    if (inputText !== undefined && inputText !== input) {
+      setInput(inputText);
+    }
+  }, [inputText]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,7 +35,13 @@ export default function ChatInterface({
     if (input.trim() && !isLoading) {
       onSendMessage(input);
       setInput('');
+      if (onInputChange) onInputChange('');
     }
+  };
+
+  const handleInputChange = (newValue) => {
+    setInput(newValue);
+    if (onInputChange) onInputChange(newValue);
   };
 
   const handleKeyDown = (e) => {
@@ -126,7 +141,7 @@ export default function ChatInterface({
             className="message-input"
             placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
             rows={3}
